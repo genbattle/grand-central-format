@@ -2,8 +2,11 @@
 
 # create a web server that accepts post requests with code snippets and sends back formatted code
 
+# TODO: handle diff mode for format/diff
+
 import http.server
 import argparse
+import subprocess
 
 class GrandCentralFormatHandler(http.server.BaseHTTPRequestHandler):
     def do_POST(self):
@@ -16,17 +19,28 @@ class GrandCentralFormatHandler(http.server.BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header('Content-type', 'text/plain')
         self.end_headers()
-        self.wfile.write('test response'.encode('utf-8'))
+        self.wfile.write(format_input(body.decode('utf-8')).encode('utf-8'))
         print('wrote response')
 
-def parse_args(args):
-    parser = argparse.ArgumentParser(description='')
+def parse_args():
+    parser = argparse.ArgumentParser(description='Server application for Grand Central Format, the centralized formatting server.')
+    parser.add_argument('--port', '-p', type=int, default=8010, help='Port to listen on for incoming connections. Defaults to 8010.')
+    return parser.parse_args()
+
+'''
+Format the given input text and return the formatted version.
+'''
+def format_input(unformatted):
+    proc = subprocess.run(['clang-format', '-style=file'], input=unformatted, stdout=subprocess.PIPE, universal_newlines=True)
+    return proc.stdout
 
 if __name__ == '__main__':
     print('+++ Grand Central Format Server Startup +++')
-    serv = http.server.HTTPServer(('', 8010), GrandCentralFormatHandler)
+    args = parse_args()
     
-    print('INFO: starting server on port {}', 8010)
+    serv = http.server.HTTPServer(('', args.port), GrandCentralFormatHandler)
+    
+    print('INFO: starting server on port {}'.format(args.port))
     
     try:
         serv.serve_forever()
