@@ -9,8 +9,13 @@ import argparse
 import subprocess
 import os.path
 
+# clang tools path - used for running the clang-format-diff.py script
 clang_path = '/usr/share/clang'
 
+'''
+Grand Central Format Request Handler - responds to text/plain http POST requests with a formatted version of the POSTed
+code or diff.
+'''
 class GrandCentralFormatHandler(http.server.BaseHTTPRequestHandler):
     def do_POST(self):
         if self.headers.get('Content-type') == 'text/plain':
@@ -18,17 +23,26 @@ class GrandCentralFormatHandler(http.server.BaseHTTPRequestHandler):
             print(self.headers.get('Content-type'))
             content_len = int(self.headers.get('Content-length'))
             body = self.rfile.read(content_len)
-            print('body: {}'.format(body.decode('utf-8')))
-            self.send_response(200)
-            self.send_header('Content-type', 'text/plain')
-            self.end_headers()
+            print('Got request from {} to format {} bytes'.format(self.client_address[0], len(body)))
+            
+            # formulate response
             output = body
-            if self.path == 'format/full':
+            valid = True
+            if self.path == 'format':
                 output = format_input(body.decode('utf-8')).encode('utf-8')
             elif self.path == 'format/diff':
                 output = format_diff(body.decode('utf-8')).encode('utf-8')
-            self.wfile.write(output)
-            print('wrote response')
+            else:
+                valid = False
+            if valid:
+                self.send_response(200)
+                self.send_header('Content-type', 'text/plain')
+                self.end_headers()
+                self.wfile.write(output)
+                print('wrote response')
+            else:
+                self.send_error(404, 'Unknown request')
+                print('Got an unknown request')
         else:
             self.send_error(400, 'Incorrect content type, must be text/plain')
 

@@ -2,13 +2,10 @@
 
 # Send a code formatting request to the server
 
-# TODO: read input from stdin, output to stdout
-# TODO: read input from a file
 # TODO: write output to a file
-# TODO: diff mode
 
 import http.client
-# import sys.stdin
+import sys
 import argparse
 
 def parse_args():
@@ -20,20 +17,29 @@ def parse_args():
     return parser.parse_args()
 
 if __name__ == '__main__':
-    conn = http.client.HTTPConnection('localhost', 8010)
-    unformatted_code = '''
-    #include <iostream>
-
-int main()   {
-std::cout <<"Hello, world!" <<  std::endl;
- return 0;
-}
-
-'''
-    conn.request('POST', 'format/full', body=unformatted_code.encode('utf-8'), headers={'Content-type': 'text/plain'})
+    args = parse_args()
+    
+    unformatted_code = ''
+    if args.input_file:
+        with open(args.input_file, 'rt') as infile:
+            unformatted_code = infile.read()
+    else:
+        unformatted_code = sys.stdin.read()
+    
+    req = 'format'
+    if args.diff:
+        req = 'format/diff'
+    
+    conn = http.client.HTTPConnection(args.server_address)
+    conn.request('POST', req, body=unformatted_code.encode('utf-8'), headers={'Content-type': 'text/plain'})
     response = conn.getresponse()
-    print('got response!')
     formatted_code = response.read().decode('utf-8')
     # TODO: test 'format/diff'
-    print('formatted code:')
-    print(formatted_code)
+    
+    # if server responded successfully, output the formatted code, otherwise output the original code
+    outfile = open(args.output_file, 'wt') if args.output_file else sys.stdout
+    if response.status == 200:
+        outfile.write(formatted_code)
+    else:
+        outfile.write(unformatted_code)
+        sys.exit(-1)
