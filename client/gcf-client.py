@@ -2,8 +2,6 @@
 
 # Send a code formatting request to the server
 
-# TODO: write output to a file
-
 import http.client
 import sys
 import argparse

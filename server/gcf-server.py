@@ -19,11 +19,9 @@ code or diff.
 class GrandCentralFormatHandler(http.server.BaseHTTPRequestHandler):
     def do_POST(self):
         if self.headers.get('Content-type') == 'text/plain':
-            print(self.path)
-            print(self.headers.get('Content-type'))
             content_len = int(self.headers.get('Content-length'))
             body = self.rfile.read(content_len)
-            print('Got request from {} to format {} bytes'.format(self.client_address[0], len(body)))
+            print('INFO: Got request from {} to format {} bytes'.format(self.client_address[0], len(body)))
             
             # formulate response
             output = body
@@ -39,10 +37,10 @@ class GrandCentralFormatHandler(http.server.BaseHTTPRequestHandler):
                 self.send_header('Content-type', 'text/plain')
                 self.end_headers()
                 self.wfile.write(output)
-                print('wrote response')
+                print('INFO: Wrote response')
             else:
                 self.send_error(404, 'Unknown request')
-                print('Got an unknown request')
+                print('ERROR: Got an unknown request')
         else:
             self.send_error(400, 'Incorrect content type, must be text/plain')
 
