@@ -21,8 +21,12 @@ format_on_commit=$(git config --bool hooks.formatoncommit)
 reject_unformatted_commit=$(git config --bool hooks.rejectunformattedcommit)
 # if "true", whole files will be formatted/checked instead of diffs
 format_whole_files=$(git config --bool hooks.formatwholefiles) # format diffs instead of whole files
-
-echo "PRE-COMMIT RUNNING"
+# get clang-format-diff path from git config
+clang_format_diff=$(git config --get clang.clangformatdiff)
+# set default clang-format-diff path
+if [ -z "$clang_format_diff" ]; then
+	clang_format_diff="/usr/share/clang/clang-format-diff.py"
+fi
 
 # Format code if necessary
 if [ "$format_on_commit" == "true" ]; then
@@ -44,8 +48,7 @@ if [ "$format_on_commit" == "true" ]; then
 	exit 0
 elif [ "$reject_unformatted_commit" == "true" ]; then
 	# reject the commit if there are any changes
-	changes=$(git diff --cached --minimal -U0 --diff-filter=ACM | /usr/share/clang/clang-format-diff.py -p 1 -style=file)
-	echo $(echo "$changes" | wc -m)
+	changes=$(git diff --cached --minimal -U0 --diff-filter=ACM | "$clang_format_diff" -p 1 -style=file)
 	if [ -n "$changes" ]; then
 		echo "ERROR: staged changes not properly formatted, aborting commit."
 		exit 1
