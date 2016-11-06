@@ -1,0 +1,54 @@
+#!/bin/sh
+#
+# An example hook script to verify what is about to be committed.
+# Called by "git commit" with no arguments.  The hook should
+# exit with non-zero status after issuing an appropriate message if
+# it wants to stop the commit.
+#
+# To enable this hook, rename this file to "pre-commit".
+
+if git rev-parse --verify HEAD >/dev/null 2>&1
+then
+	against=HEAD
+else
+	# Initial commit: diff against an empty tree object
+	against=4b825dc642cb6eb9a060e54bf8d69288fbee4904
+fi
+
+# code can be automatically formatted on commit. If "true", reject_unformatted_commit is ignored
+format_on_commit=$(git config --bool hooks.formatoncommit)
+# git config can be used to enable or disable reject on commit
+reject_unformatted_commit=$(git config --bool hooks.rejectunformattedcommit)
+# if "true", whole files will be formatted/checked instead of diffs
+format_whole_files=$(git config --bool hooks.formatwholefiles) # format diffs instead of whole files
+
+echo "PRE-COMMIT RUNNING"
+
+# Format code if necessary
+if [ "$format_on_commit" == "true" ]; then
+	if [ "$format_whole_files" == "true" ]; then
+		echo "Running clang-format on comitted files..."
+		git diff --cached --name-only --diff-filter=ACM | \
+    	while read filename; do
+			echo "formatting $filename..."
+			# format each file
+			clang-format -style=file -i "$filename"
+			# add the changes to the working directory
+			git add $filename
+		done
+	else
+		echo "Running clang-format on comitted changes..."
+		# run git clang-format over the working directory
+		git clang-format --commit $against
+	fi
+	exit 0
+elif [ "$reject_unformatted_commit" == "true" ]; then
+	# reject the commit if there are any changes
+	changes=$(git diff --cached --minimal -U0 --diff-filter=ACM | /usr/share/clang/clang-format-diff.py -p 1 -style=file)
+	echo $(echo "$changes" | wc -m)
+	if [ -n "$changes" ]; then
+		echo "ERROR: staged changes not properly formatted, aborting commit."
+		exit 1
+	fi
+	exit 0
+fi
